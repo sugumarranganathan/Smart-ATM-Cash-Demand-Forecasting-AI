@@ -437,3 +437,333 @@ atm_dropdown = gr.Dropdown(
 # ==========================================
 
 demo.launch()
+
+# ==========================================
+# Create Forecast DataFrame
+# ==========================================
+
+def create_forecast_dataframe(predictions):
+
+    forecast_df = pd.DataFrame({
+        "Forecast Hour": [f"Hour {i}" for i in range(1, 25)],
+        "Predicted Cash Withdrawal": np.round(predictions, 2)
+    })
+
+    return forecast_df
+
+
+# ==========================================
+# Forecast Chart
+# ==========================================
+
+def create_chart(predictions):
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    ax.plot(
+        range(1, 25),
+        predictions,
+        marker="o",
+        linewidth=2,
+        color="blue"
+    )
+
+    ax.set_title("Next 24 Hours ATM Cash Withdrawal Forecast")
+
+    ax.set_xlabel("Forecast Hour")
+
+    ax.set_ylabel("Predicted Withdrawal")
+
+    ax.set_xticks(range(1, 25))
+
+    ax.grid(True)
+
+    plt.tight_layout()
+
+    return fig
+
+
+# ==========================================
+# ATM Current Status
+# ==========================================
+
+def current_status(atm_df):
+
+    latest = atm_df.iloc[-1]
+
+    status = f"""
+🏧 ATM Information
+
+ATM ID : {latest['atmId']}
+ATM Name : {latest['atmName']}
+City : {latest['atmCity']}
+
+Current Balance : ₹ {latest['totalBalance']:,.2f}
+Latest Withdrawal : ₹ {latest['totalOutcome']:,.2f}
+Transactions : {int(latest['totalNumberTransaction'])}
+
+Last Updated :
+{latest['transactionTime']}
+"""
+
+    return status
+
+
+# ==========================================
+# Prediction Function
+# ==========================================
+
+def predict(data_source, atm_id, uploaded_file):
+
+    try:
+
+        # Load Dataset
+        df = load_dataset(data_source, uploaded_file)
+
+        # Latest 24 Hours
+        atm_df = latest_24_hours(df, atm_id)
+
+        if atm_df is None:
+
+            raise gr.Error(
+                "Selected ATM contains fewer than 24 records."
+            )
+
+        # Prepare Input
+        sequence = prepare_sequence(atm_df)
+
+        # Recursive Prediction
+        predictions = recursive_forecast(
+            sequence,
+            steps=24
+        )
+
+        # Forecast Table
+        forecast_df = create_forecast_dataframe(
+            predictions
+        )
+
+        # Forecast Chart
+        chart = create_chart(
+            predictions
+        )
+
+        # Summary
+        total, average, peak, low = forecast_summary(
+            predictions
+        )
+
+        # Status
+        status = current_status(
+            atm_df
+        )
+
+        return (
+
+            status,
+
+            forecast_df,
+
+            chart,
+
+            f"₹ {total:,.2f}",
+
+            f"₹ {average:,.2f}",
+
+            f"Hour {peak}",
+
+            f"Hour {low}"
+
+        )
+
+    except Exception as e:
+
+        return (
+
+            f"❌ {str(e)}",
+
+            pd.DataFrame(),
+
+            None,
+
+            "",
+
+            "",
+
+            "",
+
+            ""
+
+        )
+
+
+# ==========================================
+# Gradio User Interface
+# ==========================================
+
+with gr.Blocks(
+    title="Smart ATM Cash Demand Forecasting",
+    theme=gr.themes.Soft()
+) as demo:
+
+    gr.Markdown("""
+# 🏧 Smart ATM Cash Demand Forecasting Using LSTM
+
+Predict the **next 24 hours ATM cash withdrawal** using a trained LSTM model.
+
+### Features
+- ✅ Built-in Dataset
+- ✅ Upload Your Own CSV
+- ✅ ATM-wise Prediction
+- ✅ Automatic Latest 24 Hours Selection
+- ✅ Next 24 Hours Forecast
+- ✅ Forecast Table
+- ✅ Forecast Chart
+""")
+
+    # ------------------------------------
+    # Input Section
+    # ------------------------------------
+
+    gr.Markdown("## 📂 Choose Data Source")
+
+    with gr.Row():
+
+        data_source = gr.Radio(
+            choices=[
+                "Built-in Dataset",
+                "Upload CSV"
+            ],
+            value="Built-in Dataset",
+            label="Data Source"
+        )
+
+        upload_csv = gr.File(
+            label="Upload CSV",
+            file_types=[".csv"],
+            type="filepath"
+        )
+
+    atm_dropdown = gr.Dropdown(
+        choices=ATM_LIST,
+        value=ATM_LIST[0],
+        label="Select ATM"
+    )
+
+    predict_btn = gr.Button(
+        "🚀 Predict Next 24 Hours",
+        variant="primary"
+    )
+
+    gr.Markdown("---")
+
+    # ------------------------------------
+    # ATM Status
+    # ------------------------------------
+
+    status_box = gr.Textbox(
+        label="ATM Status",
+        lines=9,
+        interactive=False
+    )
+
+    # ------------------------------------
+    # Forecast Table
+    # ------------------------------------
+
+    forecast_table = gr.Dataframe(
+        headers=[
+            "Forecast Hour",
+            "Predicted Cash Withdrawal"
+        ],
+        interactive=False,
+        label="Forecast Table"
+    )
+
+    # ------------------------------------
+    # Forecast Chart
+    # ------------------------------------
+
+    forecast_chart = gr.Plot(
+        label="Forecast Chart"
+    )
+
+    # ------------------------------------
+    # Summary
+    # ------------------------------------
+
+    gr.Markdown("## 📊 Forecast Summary")
+
+    with gr.Row():
+
+        total_box = gr.Textbox(
+            label="Total Expected Withdrawal",
+            interactive=False
+        )
+
+        average_box = gr.Textbox(
+            label="Average Hourly Withdrawal",
+            interactive=False
+        )
+
+    with gr.Row():
+
+        peak_box = gr.Textbox(
+            label="Peak Demand Hour",
+            interactive=False
+        )
+
+        low_box = gr.Textbox(
+            label="Lowest Demand Hour",
+            interactive=False
+        )
+
+    # ------------------------------------
+    # Predict Button
+    # ------------------------------------
+
+    predict_btn.click(
+        fn=predict,
+        inputs=[
+            data_source,
+            atm_dropdown,
+            upload_csv
+        ],
+        outputs=[
+            status_box,
+            forecast_table,
+            forecast_chart,
+            total_box,
+            average_box,
+            peak_box,
+            low_box
+        ]
+    )
+
+    # ------------------------------------
+    # Footer
+    # ------------------------------------
+
+    gr.Markdown("""
+
+---
+
+### 📌 Model Information
+
+| Item | Value |
+|------|--------|
+| Model | LSTM |
+| Input Sequence | Last 24 Hours |
+| Forecast Horizon | Next 24 Hours |
+| Target Variable | **totalOutcome** |
+| Framework | TensorFlow / Keras |
+| Deployment | Hugging Face Spaces |
+| Developed Using | Gradio |
+
+""")
+
+# ==========================================
+# Launch
+# ==========================================
+
+demo.launch()
