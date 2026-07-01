@@ -42,7 +42,18 @@ ATM_LIST = sorted(default_df["atmId"].unique().tolist())
 # Dataset Loader
 # ==========================================
 
-def load_dataset(uploaded_file):
+if data_source == "Upload CSV":
+
+    if uploaded_file is None:
+        raise gr.Error("Please upload a CSV file.")
+
+    df = pd.read_csv(uploaded_file)
+
+    df["transactionTime"] = pd.to_datetime(df["transactionTime"])
+
+else:
+
+    df = default_df.copy()
 
     if uploaded_file is None:
         df = default_df.copy()
@@ -215,7 +226,7 @@ Last Updated : {latest['transactionTime']}
 # Prediction Function
 # ==========================================
 
-def predict(atm_id, uploaded_file):
+def predict(data_source, atm_id, uploaded_file):
 
     try:
 
@@ -314,19 +325,28 @@ Predict the next **24 hours ATM cash withdrawal** using a trained LSTM model.
 """
     )
 
-    with gr.Row():
+   gr.Markdown("## 📂 Choose Data Source")
 
-        atm_dropdown = gr.Dropdown(
-            choices=ATM_LIST,
-            value=ATM_LIST[0],
-            label="Select ATM ID"
-        )
+data_source = gr.Radio(
+    choices=[
+        "Built-in Dataset",
+        "Upload CSV"
+    ],
+    value="Built-in Dataset",
+    label="Data Source"
+)
 
-        upload_csv = gr.File(
-            label="Upload CSV (Optional)",
-            file_types=[".csv"],
-            type="filepath"
-        )
+upload_csv = gr.File(
+    label="Upload CSV",
+    file_types=[".csv"],
+    type="filepath"
+)
+
+atm_dropdown = gr.Dropdown(
+    choices=ATM_LIST,
+    value=ATM_LIST[0],
+    label="Select ATM"
+)
 
     predict_btn = gr.Button(
         "🚀 Predict Next 24 Hours",
@@ -380,11 +400,12 @@ Predict the next **24 hours ATM cash withdrawal** using a trained LSTM model.
             interactive=False
         )
 
-    predict_btn.click(
-        fn=predict,
-        inputs=[
-            atm_dropdown,
-            upload_csv
+   predict_btn.click(
+    fn=predict,
+    inputs=[
+        data_source,
+        atm_dropdown,
+        upload_csv
         ],
         outputs=[
             status_box,
