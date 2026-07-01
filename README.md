@@ -43,7 +43,7 @@ This helps banks:
 
 ---
 
-# ✨ Features
+# Features
 
 - ✅ Built-in ATM Dataset
 - ✅ Upload Custom CSV Dataset
