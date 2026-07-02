@@ -1,3 +1,44 @@
+                ATM Transaction Dataset
+                         │
+                         ▼
+                 Data Preprocessing
+     (Clean data, Sort by Time, Select ATM)
+                         │
+                         ▼
+                 Feature Scaling
+                  (MinMaxScaler)
+                         │
+                         ▼
+            Prepare Last 24 Hours Sequence
+                         │
+                         ▼
+                Train LSTM Model
+                         │
+                         ▼
+             Predict Next 24 Hours
+           (Recursive Forecasting)
+                         │
+                         ▼
+             Forecast Results Generated
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+     Forecast Table  Forecast Chart  Forecast Summary
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 https://colab.research.google.com/drive/14i4T_8AwdDG0cdnon14CIqZhpOdTu242
 
 https://sugumarai-smart-atm-cash-demand-forecast.hf.space
